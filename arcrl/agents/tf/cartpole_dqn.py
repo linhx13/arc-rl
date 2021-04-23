@@ -49,14 +49,26 @@ class DQNAgent:
     # state is input and Q Value of each action is output of network
     def build_model(self):
         model = Sequential()
-        model.add(Dense(24, input_dim=self.state_size, activation='relu',
-                        kernel_initializer='he_uniform'))
-        model.add(Dense(24, activation='relu',
-                        kernel_initializer='he_uniform'))
-        model.add(Dense(self.action_size, activation='linear',
-                        kernel_initializer='he_uniform'))
+        model.add(
+            Dense(
+                24,
+                input_dim=self.state_size,
+                activation="relu",
+                kernel_initializer="he_uniform",
+            )
+        )
+        model.add(
+            Dense(24, activation="relu", kernel_initializer="he_uniform")
+        )
+        model.add(
+            Dense(
+                self.action_size,
+                activation="linear",
+                kernel_initializer="he_uniform",
+            )
+        )
         model.summary()
-        model.compile(loss='mse', optimizer=Adam(lr=self.learning_rate))
+        model.compile(loss="mse", optimizer=Adam(lr=self.learning_rate))
         return model
 
     # after some time interval update the target model to be same with model
@@ -104,16 +116,22 @@ class DQNAgent:
                 target[i][action[i]] = reward[i]
             else:
                 target[i][action[i]] = reward[i] + self.discount_factor * (
-                    np.amax(target_val[i]))
+                    np.amax(target_val[i])
+                )
 
         # and do the model fit!
-        self.model.fit(update_input, target, batch_size=self.batch_size,
-                       epochs=1, verbose=0)
+        self.model.fit(
+            update_input,
+            target,
+            batch_size=self.batch_size,
+            epochs=1,
+            verbose=0,
+        )
 
 
 if __name__ == "__main__":
     # In case of CartPole-v1, maximum length of episode is 500
-    env = gym.make('CartPole-v1')
+    env = gym.make("CartPole-v1")
     # get size of state and action from environment
     state_size = env.observation_space.shape[0]
     action_size = env.action_space.n
@@ -154,14 +172,22 @@ if __name__ == "__main__":
                 score = score if score == 500 else score + 100
                 scores.append(score)
                 episodes.append(e)
-                pylab.plot(episodes, scores, 'b')
+                pylab.plot(episodes, scores, "b")
                 pylab.savefig("./save_graph/cartpole_dqn.png")
-                print("episode:", e, "  score:", score, "  memory length:",
-                      len(agent.memory), "  epsilon:", agent.epsilon)
+                print(
+                    "episode:",
+                    e,
+                    "  score:",
+                    score,
+                    "  memory length:",
+                    len(agent.memory),
+                    "  epsilon:",
+                    agent.epsilon,
+                )
 
                 # if the mean of scores of last 10 episode is bigger than 490
                 # stop training
-                if np.mean(scores[-min(10, len(scores)):]) > 490:
+                if np.mean(scores[-min(10, len(scores)) :]) > 490:
                     sys.exit()
 
         # save the model

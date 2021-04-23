@@ -33,12 +33,25 @@ class QNetwork(tf.keras.Model):
             self(inputs=tf.constant(
                 np.zeros(shape=(1, ) + observation_shape, dtype=np.float32)))
 
-    @tf.function
+    # @tf.function
     def call(self, inputs):
         features = self.dense1(inputs)
         features = self.dense2(features)
         q_values = self.dense3(features)
         return q_values
+
+
+def create_q_network(observation_shape,
+                     action_size,
+                     units=(24, 24),
+                     name="QNetwork"):
+    model = tf.keras.models.Sequential([
+        tf.keras.Input(observation_shape),
+        tf.keras.layers.Dense(units[0], activation='relu'),
+        tf.keras.layers.Dense(units[1], activation="relu"),
+        tf.keras.layers.Dense(action_size, activation="linear")
+    ])
+    return model
 
 
 class DQN:
@@ -85,7 +98,7 @@ class DQN:
         actions = self._select_action_batch(observations)
         return actions.numpy()[0]
 
-    @tf.function
+    # @tf.function
     def _select_action_batch(self, observations):
         q_values = self._q_network(observations)
         return tf.argmax(q_values, axis=1)
@@ -114,14 +127,22 @@ class DQN:
         # print("n_update: {}, td_error: {}, td_loss: {}".format(
         #     self._n_update, td_error, td_loss))
         if self._n_updates % self._target_update_period == 0:
-            print("updating target q network ...")
-            self._target_q_network.set_weights(self._q_network.get_weights())
+            print("n_updates: %d, updating target q network ..." %
+                  self._n_updates)
+            # self._target_q_network.set_weights(self._q_network.get_weights())
+            self._update_target()
 
         if self._epsilon > self._epsilon_min:
             self._epsilon = max(self._epsilon * self._epsilon_decay,
                                 self._epsilon_min)
         tf.summary.scalar(name=self._name + "/epsilon", data=self._epsilon)
         return td_error, td_loss
+
+    def _update_target(self):
+        q_vars = self._q_network.trainable_variables
+        target_q_vars = self._target_q_network.trainable_variables
+        for var, var_target in zip(q_vars, target_q_vars):
+            var_target.assign(var)
 
     # @tf.function
     def _loss(self,
@@ -132,7 +153,7 @@ class DQN:
               dones,
               weights=None,
               training=False):
-        batch_size = observations.shape[0]
+        # batch_size = observations.shape[0]
         not_dones = 1. - tf.cast(dones, dtype=tf.float32)
         actions = tf.cast(actions, dtype=tf.int32)
 
@@ -148,8 +169,9 @@ class DQN:
                              off_value=0.)
         q_values = tf.reduce_sum(
             self._q_network(observations, training=training) * actions, axis=1)
-        next_q_values = tf.reduce_max(
-            self._target_q_network(next_observations), axis=1)
+        next_q_values = tf.reduce_max(self._target_q_network(next_observations,
+                                                             training=False),
+                                      axis=1)
         target_q_values = \
             tf.stop_gradient(rewards + self._discount * not_dones * next_q_values)
 
@@ -198,8 +220,10 @@ if __name__ == "__main__":
     action_size = env.action_space.n
 
     q_network = QNetwork(observation_shape, action_size)
+    # q_network = create_q_network(observation_shape, action_size)
     q_network.summary()
     target_q_network = QNetwork(observation_shape, action_size)
+    # target_q_network = create_q_network(observation_shape, action_size)
     # target_q_network = None
     optimizer = tf.keras.optimizers.Adam(1e-3)
     agent = DQN(observation_shape,
@@ -214,7 +238,7 @@ if __name__ == "__main__":
     scores, episodes = [], []
     e = 0
 
-    while agent._n_updates < 1000000:
+    while agent._n_updates < 100000:
         done = False
         score = 0
         obs = env.reset()
